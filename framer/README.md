@@ -1,61 +1,52 @@
 # The Lost Sierra Lodge — Google Review Carousel (Framer)
 
-**Status:** component source built; not installed or published to the live Framer site.
+**Status: installed and published October 31, 2026.**
 
-This folder contains a Framer React 18 code component, \`LSLGoogleReviews.tsx\`. It adds **Google guest testimonials** to the current **"FROM OUR GUESTS / Good company. Great stays."** section without replacing the existing ratings, OTA links, five gold stars, review counts, or stay statistics.
+`LSLGoogleReviews.tsx` is installed inside the shared **Guest Reviews** Framer component. Its Desktop Large master supplies the tablet and phone variants on the Home / Lodge page. The previous Elfsight embed was removed. The existing native heading, five gold stars, Airbnb / Vrbo / Direct ratings and links, review counts, and stay statistics remain in place.
 
-## Features implemented
+## Editing in Framer
 
-- Continuous horizontal auto-scroll with a seamless duplicated track when there are multiple reviews.
-- Touch/swipe support and left/right controls.
-- Pauses on hover, focus, touch, or an expanded review; respects reduced-motion preference and pauses out of view.
-- Full-length text, with Read more/Read less when longer than 245 characters.
-- Per-review Google attribution, actual star rating, name, date, optional original-review link.
-- "Booked Direct · Host verified" **only** when explicitly toggled for a verified direct booking.
-- "Read all reviews on Google" and "Leave us a Google review" CTAs opening new tabs.
-- Review list and colors are editable in Framer's property panel without touching source code.
-- Empty state is explicit; no fictitious guest quotes.
+1. Open the **Guest Reviews** component.
+2. In its Desktop Large master, select **LSLGoogleReviews**.
+3. In the right property panel, open **Reviews** to edit, add, remove, or reorder reviews. Each entry exposes reviewer name, date, full text, stars, source URL, and verified-direct-booking status.
+4. The same panel exposes colors, scrolling, and Google link settings. Leave the extra heading disabled because the native section already provides one.
+5. Preview desktop, tablet, and phone, then **Publish**.
 
-## How to install in native Framer
+This is a Framer React code component with editable property controls. Reviews do not require source-code edits, but the individual card internals are not separate native canvas layers.
 
-1. In the Framer project, go to **Assets → Code → Create Code File**, name it \`LSLGoogleReviews.tsx\`, and paste the entire code from this folder.
-2. Insert \`LSLGoogleReviews\` onto the page in the existing **From Our Guests** section. The **Extra heading** property should remain **off**, because the website already has a heading and decorative five stars.
-3. Use the component's **Reviews** property to add the actual Google testimonials. For each, set **Reviewer**, **Review date**, **Full review**, **Stars**, **Original review URL** (if available), and **Verified direct booking** only if substantiated. Only use reviews for which display permission is established.
-4. Set the **Leave review URL** to the business's **official copied** Google Business Profile review-request link after testing it from a signed-out browser. A previously constructed link has been placed as an editable starting point but has **not been validated**.
-5. Set **Read reviews URL** to your existing Google Maps business link and verify it opens the right profile.
-6. Keep the existing **Airbnb / Vrbo / Direct (Google)** tiles with their working outgoing URLs, plus the five gold stars, ratings/counts, and stays/guests/nights statistics. **Do not remove these elements** and do not copy Airbnb/Vrbo review text into the Google carousel.
-7. If the Home and Lodge pages need separate instances, create one **Framer reusable component** containing the configured review carousel, then use that shared component on each page, so property changes propagate from its master.
-8. Test on desktop, tablet, and mobile. Confirm links, hover, swipe, Read more, keyboard focus, reduced-motion, and scroll behavior. Only then publish and disable Elfsight.
+## Current content
 
-## Management and sync
+Three five-star Google reviews were populated from the public business profile: Josh Kirk (updated October 2026), Amanda Giles (March 2025), and Christina Drukala (September 2025). Josh's full review explicitly states that he booked directly; only his entry has the verified direct-booking badge.
 
-**Current:** reviews are editable using Framer's \`ControlType.Array\` of \`ControlType.Object\` property controls. You do not need to edit code to add or reorder a review.
+The historical Christina review mentions twelve guests. A visible footnote clarifies: “Reviews describe past stays. The Lodge currently welcomes up to 10 overnight guests.”
 
-**Not yet implemented:** automatic Google synchronization. That would require authorized Google Business Profile API access, a server-side token flow, compliance with Google's display rules, and a safe data-feed design. Do not put API secrets into the code component.
+Google profile: https://www.google.com/maps?cid=17177763003086720274
 
-**Framer CMS distinction:** direct collection access through code components is not a supported approach under recent Framer changes. The property editor is the supported immediate solution; a separate approved CMS/data workflow can be evaluated later.
+The write-review CTA uses https://search.google.com/local/writereview?placeid=ChIJkTXJWsJrnIAREs3UinCsY-4. It redirects to Google sign-in; the signed-in review form was not inspected because automatic approval review blocked that authentication boundary. No review was submitted.
 
-## Live reference URLs (as of Oct 31, 2026)
+## Behavior
 
-- The Lodge: https://thelostsierralodge.com/
-- Airbnb: https://www.airbnb.com/rooms/1245718515870609588
-- Vrbo: https://www.vrbo.com/en-sg/p4259876vb
-- Google read reviews: https://www.google.com/maps?cid=17177763003086720274
-- Tentative write-review link: https://search.google.com/local/writereview?placeid=ChIJkTXJWsJrnIAREs3UinCsY-4
+- Continuous horizontal scrolling with a repeated track and working wraparound navigation.
+- Manual Pause / Play and previous / next controls.
+- Native horizontal touch scrolling.
+- Pauses on hover, keyboard focus, expanded text, hidden page, or reduced-motion preference.
+- Read more / Read less preserves full review text.
+- Google attribution, star rating, reviewer, date, source links, and read-all / leave-review CTAs.
+- Autoplay disabled on the Framer editing canvas.
 
-## QA checklist
+## Validation completed
 
-- [ ] Populate all actual Google review text and check name/date/rating accuracy
-- [ ] Confirm guests' permission or other appropriate rights before republication
-- [ ] Copy and verify the official Google Business Profile "Get more reviews" URL
-- [ ] Keep existing platform tiles and existing stay statistics untouched
-- [ ] Confirm no duplicate introductory headings or decorative stars
-- [ ] Test carousel on desktop, tablet, and mobile
-- [ ] Test reduced-motion and accessibility controls
-- [ ] Verify Airbnb and Vrbo tiles open existing listings
-- [ ] Confirm whether the Home and Lodge pages share the same configured component
-- [ ] Replace Elfsight only after final live-site QA
+- Framer page previews at desktop 1200, tablet 810, and phone 390 settings; actual phone content viewport 375 and tablet viewport 795 showed no page-level horizontal overflow.
+- Automatic scrolling, manual pause, repeated next-arrow wraparound, and review expansion verified.
+- Shared component inherited across responsive variants.
+- Published homepage verified with the carousel present and zero Elfsight script, iframe, or app-class elements.
+- Existing platform ratings and stay statistics visibly preserved.
+- Reduced-motion behavior reviewed in source; no runtime preference emulation or physical-device touch test performed.
 
-## Scope boundary
+## Maintenance
 
-This GitHub repository is **not automatically synchronized** with the separately hosted Framer website. Committing this file does not change the published website. The component must be inserted into the native Framer project.
+Reviews are maintained manually through Framer properties. **Automatic Google synchronization is not implemented.** Adding new Google reviews requires updating the property list and publishing.
+
+The repository is not automatically synchronized with Framer. Updating this source file alone does not deploy a website change; source changes must also be applied in Framer and published.
+
+Live site: https://thelostsierralodge.com/
