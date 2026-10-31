@@ -10,7 +10,7 @@
  * No automated scraping or Google API credentials are included.
  */
 import * as React from "react"
-import { addPropertyControls, ControlType } from "framer"
+import { addPropertyControls, ControlType, RenderTarget } from "framer"
 
 type Review = {
     reviewer: string
@@ -32,7 +32,37 @@ type Props = {
     textColor: string
     secondaryText: string
     showIntro: boolean
+    style?: React.CSSProperties
 }
+
+// Verified against the public Google profile on October 31, 2026.
+// Reviews remain editable on the component in Framer.
+const DEFAULT_REVIEWS: Review[] = [
+    {
+        "reviewer": "Josh Kirk",
+        "date": "Updated October 2026",
+        "review": "We booked this incredible place for my sister’s wedding at the Corner Barn venue down the street in Graeagle. I cannot overstate how cool this place is! The fine details were extremely welcoming and the place just felt homey. The log cabin, mountainous vibe with the poker and pool tables were perfect for the professional groomsmen photos too. We booked directly through their website, TheLostSierraLodge.com, and the whole process was smooth, secure, and easy from start to finish. Our booking was insured, and everything about the stay felt just as professional and comfortable as booking through Airbnb. With the added bonus of saving on platform fees. Our stay at The Lost Sierra Lodge was the perfect spot to make this wedding weekend even more special!",
+        "rating": 5,
+        "sourceUrl": "https://www.google.com/maps?cid=17177763003086720274",
+        "bookedDirect": true
+    },
+    {
+        "reviewer": "Amanda Giles",
+        "date": "March 2025",
+        "review": "We had an excellent stay at The Lost Sierra Lodge! Utilized full use of the kitchen, porch, hot tub, and pool table among other amenities and felt beyond pleased with the quality of everything provided. We could tell there was extensive attention to detail put into the setup and ease of access/understanding of amenities provided, communication of check-in/check-out process, and help from hosts if needed. Thanks Trav and Britt! We’d highly recommend The Lost Sierra Lodge to any group looking for a lovely place to stay in this area.",
+        "rating": 5,
+        "sourceUrl": "https://www.google.com/maps?cid=17177763003086720274",
+        "bookedDirect": false
+    },
+    {
+        "reviewer": "Christina Drukala",
+        "date": "September 2025",
+        "review": "Twelve of my family members stayed at this location for three days. The house held all of us comfortably and we felt cared for by the proprietors.   The amenities assisted every one to relax and enjoy the beauty of the location.  I would definitely recommend this property.",
+        "rating": 5,
+        "sourceUrl": "https://www.google.com/maps?cid=17177763003086720274",
+        "bookedDirect": false
+    }
+]
 
 const DEFAULT_WRITE_LINK =
     "https://search.google.com/local/writereview?placeid=ChIJkTXJWsJrnIAREs3UinCsY-4"
@@ -97,9 +127,15 @@ function Arrow({ side }: { side: "left" | "right" }) {
     )
 }
 
+/**
+ * @framerSupportedLayoutWidth any
+ * @framerSupportedLayoutHeight auto
+ * @framerIntrinsicWidth 1000
+ * @framerIntrinsicHeight 420
+ */
 export default function LSLGoogleReviews(props: Props) {
     const {
-        reviews = [],
+        reviews = DEFAULT_REVIEWS,
         leaveReviewUrl = DEFAULT_WRITE_LINK,
         allReviewsUrl = DEFAULT_READ_LINK,
         autoScroll = true,
@@ -115,14 +151,17 @@ export default function LSLGoogleReviews(props: Props) {
         (r) => r && typeof r.review === "string" && r.review.trim().length > 0
     )
     const scroller = React.useRef<HTMLDivElement>(null)
+    const [manuallyPaused, setManuallyPaused] = React.useState(false)
     const paused = React.useRef(false)
+    const hovering = React.useRef(false)
+    const focusing = React.useRef(false)
     const onScreen = React.useRef(true)
     const reducedMotion = React.useRef(false)
     const touchResume = React.useRef<ReturnType<typeof setTimeout> | null>(null)
     const [expanded, setExpanded] = React.useState<number[]>([])
 
     const loop = validReviews.length > 1
-    const items = loop ? [...validReviews, ...validReviews] : validReviews
+    const items = loop ? [...validReviews, ...validReviews, ...validReviews] : validReviews
     const writeUrl = httpsLink(leaveReviewUrl)
     const readUrl = httpsLink(allReviewsUrl)
 
@@ -146,21 +185,24 @@ export default function LSLGoogleReviews(props: Props) {
 
     React.useEffect(() => {
         const rail = scroller.current
-        if (!rail || !autoScroll || !loop) return
+        if (!rail || !autoScroll || !loop || manuallyPaused || RenderTarget.current() === RenderTarget.canvas) return
         let raf = 0
         let prior = 0
+        let fractionalScroll = 0
 
         const tick = (now: number) => {
             if (!prior) prior = now
             const delta = Math.min((now - prior) / 1000, 0.06)
             prior = now
             if (
-                !paused.current &&
+                !paused.current && !hovering.current && !focusing.current && !document.hidden &&
                 onScreen.current &&
                 !reducedMotion.current &&
                 expanded.length === 0
             ) {
-                rail.scrollLeft += Math.max(0, scrollSpeed) * delta
+                fractionalScroll += Math.max(0, scrollSpeed) * delta
+                const pixels = Math.floor(fractionalScroll)
+                if (pixels > 0) { rail.scrollLeft += pixels; fractionalScroll -= pixels }
                 const first = rail.children[0] as HTMLElement | undefined
                 const second = rail.children[validReviews.length] as HTMLElement | undefined
                 if (first && second) {
@@ -172,7 +214,7 @@ export default function LSLGoogleReviews(props: Props) {
         }
         raf = window.requestAnimationFrame(tick)
         return () => window.cancelAnimationFrame(raf)
-    }, [autoScroll, loop, scrollSpeed, validReviews.length, expanded.length])
+    }, [autoScroll, loop, scrollSpeed, validReviews.length, expanded.length, manuallyPaused])
 
     React.useEffect(() => {
         return () => {
@@ -197,11 +239,12 @@ export default function LSLGoogleReviews(props: Props) {
         const step = first && next ? next.offsetLeft - first.offsetLeft : 310
         if (loop && first && repeated) {
             const cycle = repeated.offsetLeft - first.offsetLeft
+            if (direction > 0 && cycle > 0 && rail.scrollLeft >= cycle) rail.scrollLeft -= cycle
             if (direction < 0 && rail.scrollLeft < step * 0.6) {
                 rail.scrollLeft += cycle
             }
         }
-        rail.scrollBy({ left: direction * step, behavior: "smooth" })
+        rail.scrollBy({ left: direction * step, behavior: reducedMotion.current ? "auto" : "smooth" })
     }
 
     const isExpanded = (index: number) => expanded.includes(index)
@@ -230,9 +273,14 @@ export default function LSLGoogleReviews(props: Props) {
         <section
             aria-label="Guest reviews from Google"
             style={{
+                ...props.style,
                 display: "flex",
                 flexDirection: "column",
                 width: "100%",
+                boxSizing: "border-box",
+                padding: 22,
+                borderRadius: 18,
+                background: cardBackground,
                 minWidth: 0,
                 gap: 18,
                 color: textColor,
@@ -265,6 +313,7 @@ export default function LSLGoogleReviews(props: Props) {
                 </div>
                 {validReviews.length > 1 && (
                     <div style={{ display: "flex", gap: 8 }}>
+                        {autoScroll && <button type="button" aria-label={manuallyPaused ? "Resume automatic scrolling" : "Pause automatic scrolling"} aria-pressed={manuallyPaused} onClick={() => setManuallyPaused(!manuallyPaused)} style={{...controlStyle, width: 65, borderRadius: 999, fontSize: 12}}>{manuallyPaused ? "Play" : "Pause"}</button>}
                         <button
                             type="button"
                             aria-label="Previous guest review"
@@ -288,12 +337,12 @@ export default function LSLGoogleReviews(props: Props) {
                     role="region"
                     aria-label="Scrollable Google guest reviews"
                     tabIndex={0}
-                    onMouseEnter={() => { paused.current = true }}
-                    onMouseLeave={() => { paused.current = false }}
-                    onFocusCapture={() => { paused.current = true }}
+                    onMouseEnter={() => { hovering.current = true }}
+                    onMouseLeave={() => { hovering.current = false }}
+                    onFocusCapture={() => { focusing.current = true }}
                     onBlurCapture={(event) => {
                         if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-                            paused.current = false
+                            focusing.current = false
                         }
                     }}
                     onTouchStart={interruptForTouch}
@@ -315,12 +364,12 @@ export default function LSLGoogleReviews(props: Props) {
                         return (
                             <article
                                 key={repeatIndex}
-                                aria-hidden={duplicate ? "true" : undefined}
                                 style={{
                                     background: cardBackground, borderRadius: 15,
                                     border: "1px solid rgba(79,80,74,.1)",
                                     boxSizing: "border-box",
-                                    flex: "0 0 clamp(270px, 40%, 395px)",
+                                    flex: "0 0 min(100%, 340px)",
+                                    color: textColor,
                                     minHeight: 233,
                                     padding: "26px 24px 23px",
                                     display: "flex", flexDirection: "column",
@@ -337,7 +386,7 @@ export default function LSLGoogleReviews(props: Props) {
                                     {long && (
                                         <button
                                             type="button"
-                                            tabIndex={duplicate ? -1 : 0}
+                                            tabIndex={0}
                                             onClick={() => toggleExpanded(originalIndex)}
                                             aria-expanded={open}
                                             style={{
@@ -371,7 +420,7 @@ export default function LSLGoogleReviews(props: Props) {
                                     </div>
                                     {httpsLink(review.sourceUrl) && (
                                         <a
-                                            tabIndex={duplicate ? -1 : 0}
+                                            tabIndex={0}
                                             href={httpsLink(review.sourceUrl)}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -392,9 +441,7 @@ export default function LSLGoogleReviews(props: Props) {
                     borderRadius: 15, color: secondaryText, fontSize: 14,
                     lineHeight: 1.6
                 }}>
-                    Add your permission-cleared Google testimonials in
-                    the Framer component’s <strong>Reviews</strong> controls.
-                    No review text has been invented or imported.
+                    Read guest experiences on Google using the link below.
                 </div>
             )}
 
@@ -429,13 +476,15 @@ export default function LSLGoogleReviews(props: Props) {
                 )}
             </div>
 
+            <p style={{margin: 0, fontSize: 11, lineHeight: 1.5, color: secondaryText}}>Reviews describe past stays. The Lodge currently welcomes up to 10 overnight guests.</p>
+
             <style>{".lsl-google-reviews-rail::-webkit-scrollbar { display: none; } .lsl-google-reviews-rail a:focus-visible, .lsl-google-reviews-rail button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }"}</style>
         </section>
     )
 }
 
 LSLGoogleReviews.defaultProps = {
-    reviews: [],
+    reviews: DEFAULT_REVIEWS,
     leaveReviewUrl: DEFAULT_WRITE_LINK,
     allReviewsUrl: DEFAULT_READ_LINK,
     autoScroll: true,
@@ -473,7 +522,7 @@ addPropertyControls(LSLGoogleReviews, {
                 },
             }
         },
-        defaultValue: []
+        defaultValue: DEFAULT_REVIEWS
     },
     leaveReviewUrl: {
         type: ControlType.String, title: "Leave review URL",
@@ -501,3 +550,4 @@ addPropertyControls(LSLGoogleReviews, {
         defaultValue: false
     },
 })
+
